@@ -1,0 +1,21 @@
+## requirements.txt
+
+# MLOps & Data Foundation
+mlflow==2.10.1                # Experiment Tracking and Model Registry
+dvc==3.45.0                   # Data Version Control
+great-expectations==0.17.20   # Data Validation and Integrity Check
+pandas==2.1.4                 # Data manipulation
+scikit-learn==1.3.2           # Standard ML utilities
+xgboost==2.0.3                # Core model algorithm
+uvicorn[standard]==0.27.0     # ASGI server for FastAPI
+
+# Model Serving (FastAPI)
+fastapi==0.109.0              # Web framework for API serving
+pydantic==2.5.3               # Data validation for FastAPI schemas
+
+# Frontend (Streamlit)
+streamlit==1.29.0             # Interactive Web App UI
+plotly==5.18.0                # Advanced visualizations
+
+# Development & Utility
+python-dotenv==1.0.0          # Environment variable management

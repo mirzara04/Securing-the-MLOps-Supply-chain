@@ -1,0 +1,7 @@
+venv/ 
+.dvc/cache/ 
+mlruns/ 
+__pycache__/ 
+*.csv 
+artifacts/ 
+.ipynb_checkpoints/ 

@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  # 1. The Experiment Tracker
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:latest
+    container_name: mlflow_server
+    ports:
+      - "5000:5000"
+    command: mlflow server --host 0.0.0.0 --port 5000
+
+  # 2. The Model API
+  api:
+    build: .
+    context: .
+    dockerfile: Dockerfile.fastapi
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mlflow
+
+  # 3. The User Interface
+  dashboard:
+    build: .
+    context: .
+    dockerfile: Dockerfile.streamlit
+    ports:
+      - "8501:8501"
+    depends_on:
+      - api
