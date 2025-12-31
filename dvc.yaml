@@ -1,0 +1,11 @@
+stages:
+  train_and_evaluate:
+    cmd: python src/train.py
+    deps:
+      - data/creditcard.csv
+      - src/train.py
+      - src/security_utils.py
+    metrics:
+      - mlruns/0/  # This tracks the MLflow directory for changes
+    outs:
+      - models/    # Tracks the folder where models are dumped

@@ -1,0 +1,6 @@
+attack:
+  poison_rate: 0.2
+  type: "label_flipping"
+defense:
+  enabled: true
+  threshold: 0.005
