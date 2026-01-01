@@ -7,60 +7,75 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, roc_auc_score
 import great_expectations as gx
 from security_utils import apply_label_flipping, apply_roni
+import yaml  # Added for params loading
 
-def run_pipeline(poison_rate=0.1, defense_enabled=False):
-    # 1. Setup MLflow and Data Context
+def run_pipeline():
+    # --- 1. LOAD PARAMS FROM SUPPLY CHAIN CONFIG ---
+    with open("params.yaml", "r") as f:
+        params = yaml.safe_load(f)
+    
+    # Map YAML values to variables
+    poison_rate = params['attack']['poison_rate']
+    defense_enabled = params['defense']['enabled']
+    roni_threshold = params['defense']['threshold']
+    sample_size = params['data']['sample_size']
+    n_estimators = params['model']['n_estimators']
+
+    # 2. Setup MLflow and Data Context
     mlflow.set_experiment("Fraud_Detection_Security")
     context = gx.get_context()
     
     with mlflow.start_run():
-        # --- DATA STAGE ---
-        df = pd.read_csv("data/creditcard.csv").sample(10000) # Small sample for speed
+        # --- 3. DATA STAGE ---
+        # Using sample_size from params.yaml
+        df = pd.read_csv("data/creditcard.csv").sample(sample_size) 
         
         # Defense Layer 1: Data Integrity (Great Expectations)
-        # We check the raw data before anything else
         datasource = context.sources.add_pandas(name="my_datasource")
         asset = datasource.add_dataframe_asset(name="my_asset")
         batch = asset.get_batch(dataframe=df)
         
-        # (Assuming you created a suite named 'fraud_suite' as in the previous step)
-        # validation_result = batch.validate(expectation_suite_name="fraud_suite")
-        # mlflow.log_dict(validation_result.to_json_dict(), "ge_validation_results.json")
+        # (Optional: Validation logic here)
 
         X = df.drop('Class', axis=1).values
         y = df['Class'].values
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
         X_val, X_test_clean, y_val, y_test_clean = train_test_split(X_test, y_test, test_size=0.5)
 
-        # --- ATTACK STAGE ---
+        # --- 4. ATTACK STAGE ---
+        # Using poison_rate from params.yaml
         y_train_poisoned = apply_label_flipping(y_train, poison_rate)
-        mlflow.log_param("poison_rate", poison_rate)
 
-        # --- DEFENSE STAGE ---
+        # --- 5. DEFENSE STAGE ---
         removed_count = 0
         if defense_enabled:
-            X_train_final, y_train_final, removed_count = apply_roni(X_train, y_train_poisoned, X_val, y_val)
+            # Using threshold from params.yaml
+            X_train_final, y_train_final, removed_count = apply_roni(
+                X_train, y_train_poisoned, X_val, y_val, threshold=roni_threshold
+            )
         else:
             X_train_final, y_train_final = X_train, y_train_poisoned
         
-        mlflow.log_param("defense_enabled", defense_enabled)
+        # --- 6. LOGGING (Audit Trail) ---
+        # We log the entire params dictionary so we have a record of the supply chain state
+        mlflow.log_params(params['attack'])
+        mlflow.log_params(params['defense'])
         mlflow.log_metric("samples_rejected_by_roni", removed_count)
 
-        # --- TRAINING STAGE ---
-        clf = RandomForestClassifier(n_estimators=100)
+        # --- 7. TRAINING STAGE ---
+        # Using n_estimators from params.yaml
+        clf = RandomForestClassifier(n_estimators=n_estimators)
         clf.fit(X_train_final, y_train_final)
         
-        # --- QUANTITATIVE ANALYSIS ---
+        # --- 8. QUANTITATIVE ANALYSIS ---
         y_pred = clf.predict(X_test_clean)
         auc = roc_auc_score(y_test_clean, clf.predict_proba(X_test_clean)[:, 1])
         
         mlflow.log_metric("auc_score", auc)
         mlflow.sklearn.log_model(clf, "fraud_model")
         
-        print(f"Run Complete: Poison={poison_rate}, Defense={defense_enabled}, AUC={auc:.4f}")
+        print(f"✅ Run Complete: Poison={poison_rate}, Defense={defense_enabled}, AUC={auc:.4f}")
 
 if __name__ == "__main__":
-    # Example: Run an attack without defense
-    run_pipeline(poison_rate=0.2, defense_enabled=False)
-    # Example: Run the same attack WITH defense
-    run_pipeline(poison_rate=0.2, defense_enabled=True)
+    # Now we just call the function. It knows where to find its instructions (params.yaml).
+    run_pipeline()

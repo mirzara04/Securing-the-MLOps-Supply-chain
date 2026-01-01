@@ -4,6 +4,15 @@ import mlflow
 import pandas as pd
 import plotly.express as px
 
+# streamlit_app/Home.py (Add to sidebar)
+import yaml
+
+with open("params.yaml", "r") as f:
+    current_config = yaml.safe_load(f)
+
+st.sidebar.header("🛡️ Active Security Policy")
+st.sidebar.json(current_config) # Shows the YAML settings in the UI
+
 st.set_page_config(page_title="Secure MLOps Dashboard", layout="wide")
 
 st.title("🛡️ Secure MLOps: Fraud Detection Monitoring")
